@@ -1,6 +1,7 @@
-class LeoPackError(Exception):
+class PackError(Exception):
     """Base class for Leo Pack errors."""
 
+LeoPackError = PackError
 
 class ArgumentError(LeoPackError):
     pass
