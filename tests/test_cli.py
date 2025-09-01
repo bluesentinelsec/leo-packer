@@ -68,3 +68,28 @@ def test_cli_password_roundtrip(tmp_path):
     run_cli(["unpack", str(archive), str(out_ok), "--password", "pw123"])
     assert (out_ok / "msg.txt").read_text() == "secret text"
 
+def test_cli_list_and_selective_unpack(tmp_path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / "a.txt").write_text("aaa")
+    (input_dir / "b.txt").write_text("bbb")
+    archive = tmp_path / "arc.leopack"
+
+    # Pack
+    run_cli(["pack", str(input_dir), str(archive)])
+
+    # List contents
+    res = subprocess.run(
+        [sys.executable, "-m", "leo_packer.cli", "list", str(archive)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "a.txt" in res.stdout
+    assert "b.txt" in res.stdout
+
+    # Selective unpack
+    out = tmp_path / "out"
+    run_cli(["unpack", str(archive), str(out), "--file", "a.txt"])
+    assert (out / "a.txt").read_text() == "aaa"
+    assert not (out / "b.txt").exists()

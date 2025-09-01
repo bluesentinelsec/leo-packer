@@ -8,20 +8,25 @@ OUTPUT_FILE="leo_pack_mega.h"
 
 # List of input header files
 FILES=(
-src/leo_packer/__init__.py
 src/leo_packer/cli.py
 src/leo_packer/compress.py
 src/leo_packer/core.py
 src/leo_packer/errors.py
+src/leo_packer/__init__.py
 src/leo_packer/obfuscate.py
 src/leo_packer/pack_reader.py
 src/leo_packer/util.py
+
 tests/__init__.py
+tests/test_cli.py
 tests/test_compress.py
+tests/test_core_compression.py
+tests/test_core_pack_unpack_obfuscated.py
+tests/test_core_pack_unpack.py
 tests/test_obfuscate.py
 tests/test_pack_reader.py
 tests/test_util.py
-tests/test_cli.py
+
 Makefile
 )
 

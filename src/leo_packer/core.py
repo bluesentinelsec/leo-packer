@@ -124,12 +124,22 @@ def pack(
         out.write(toc_bytes)
 
 
-def unpack(input_file: str, output_dir: str, password: Optional[str] = None) -> None:
-    """Unpack a LeoPack archive to a directory."""
+def unpack(
+    input_file: str,
+    output_dir: str,
+    password: Optional[str] = None,
+    files: Optional[list[str]] = None,
+) -> None:
+    """Unpack a LeoPack archive to a directory.
+
+    If `files` is provided, only those entries are extracted.
+    """
     os.makedirs(output_dir, exist_ok=True)
     pack = pack_reader.open_pack(input_file, password=password)
     try:
         for entry in pack_reader.list_entries(pack):
+            if files and entry.name not in files:
+                continue
             data = pack_reader.extract(pack, entry.name)
             out_path = Path(output_dir) / entry.name
             out_path.parent.mkdir(parents=True, exist_ok=True)
