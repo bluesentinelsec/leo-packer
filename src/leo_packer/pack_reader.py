@@ -1,7 +1,7 @@
 import os
 import struct
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, BinaryIO
 from . import compress
 from . import obfuscate
 
@@ -26,7 +26,7 @@ class Entry:
 
 @dataclass
 class Pack:
-    f: any
+    f: BinaryIO
     entries: List[Entry]
     pack_flags: int
     pack_salt: int

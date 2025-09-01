@@ -5,7 +5,7 @@ Core library for Leo Pack operations (LGPLv3).
 import os
 import struct
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from .util import leo_crc32_ieee
 from .errors import PackError
 from . import pack_reader
@@ -128,7 +128,7 @@ def unpack(
     input_file: str,
     output_dir: str,
     password: Optional[str] = None,
-    files: Optional[list[str]] = None,
+    files: Optional[List[str]] = None,
 ) -> None:
     """Unpack a LeoPack archive to a directory.
 
