@@ -3,11 +3,16 @@ import struct
 from dataclasses import dataclass
 from typing import List, Optional
 from . import compress
+from . import obfuscate
 
 from .util import crc32_ieee as leo_crc32_ieee
 from .errors import LeoPackError as PackError
 
+# Entry-level flags
 FLAG_COMPRESSED = 0x1
+
+# Pack-level flags (header.pack_flags)
+PACK_FLAG_OBFUSCATED = 0x1
 
 @dataclass
 class Entry:
@@ -25,6 +30,7 @@ class Pack:
     entries: List[Entry]
     pack_flags: int
     pack_salt: int
+    password: Optional[str] = None  # stored to derive XOR stream
 
 
 _HEADER_SIZE = 0x54
@@ -50,14 +56,14 @@ def open_pack(path: str, password: Optional[str] = None) -> Pack:
         raise PackError("Unsupported version")
 
     # Validate header CRC
-    crc_expect, = struct.unpack_from("<I", header, 0x50)
+    (crc_expect,) = struct.unpack_from("<I", header, 0x50)
     tmp = bytearray(header)
     struct.pack_into("<I", tmp, 0x50, 0)
     crc_actual = leo_crc32_ieee(tmp, len(header), 0)
     if crc_expect != crc_actual:
         raise PackError("Bad header CRC")
 
-    # Load TOC
+    # Load TOC (always in clear)
     f.seek(toc_offset)
     toc = f.read(toc_size)
     if len(toc) != toc_size:
@@ -77,7 +83,7 @@ def open_pack(path: str, password: Optional[str] = None) -> Pack:
 
         entries.append(Entry(name, flags, size_uncompressed, size_stored, offset, crc32_uncompressed))
 
-    return Pack(f, entries, pack_flags, pack_salt)
+    return Pack(f, entries, pack_flags, pack_salt, password=password)
 
 
 def close(pack: Pack):
@@ -87,6 +93,15 @@ def close(pack: Pack):
 def list_entries(pack: Pack) -> List[Entry]:
     return pack.entries
 
+
+def _xor_bytes(seed: int, data: bytes) -> bytes:
+    if seed == 0 or not data:
+        return data
+    buf = bytearray(data)
+    obfuscate.xor_stream_apply(seed, buf)
+    return bytes(buf)
+
+
 def extract(pack: Pack, name: str) -> bytes:
     for e in pack.entries:
         if e.name == name:
@@ -95,16 +110,23 @@ def extract(pack: Pack, name: str) -> bytes:
             if len(data) != e.size_stored:
                 raise PackError("Truncated data")
 
+            # Deobfuscate at pack-level before any per-entry transforms
+            if pack.pack_flags & PACK_FLAG_OBFUSCATED:
+                if not pack.password:
+                    raise PackError("Archive is obfuscated and requires a password")
+                seed = obfuscate.xor_seed_from_password(pack.password, pack.pack_salt)
+                data = _xor_bytes(seed, data)
+
             # Decompress if needed
             if e.flags & FLAG_COMPRESSED:
                 try:
                     data = compress.decompress_deflate(data, expected_size=e.size_uncompressed)
                 except Exception as ex:
-                    raise PackError(f"Decompression failed for {e.name}: {ex}") from ex
+                    raise PackError(f"Decompression failed for {e.name} (bad password or corrupted data): {ex}") from ex
 
             crc = leo_crc32_ieee(data, len(data), 0)
             if crc != e.crc32_uncompressed:
-                raise PackError("CRC mismatch")
+                raise PackError("CRC mismatch (bad password or corrupted data)")
             return data
     raise PackError("Entry not found")
 

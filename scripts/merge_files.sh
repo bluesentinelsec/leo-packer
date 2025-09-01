@@ -21,6 +21,7 @@ tests/test_compress.py
 tests/test_obfuscate.py
 tests/test_pack_reader.py
 tests/test_util.py
+tests/test_cli.py
 Makefile
 )
 
