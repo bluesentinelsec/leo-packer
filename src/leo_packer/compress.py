@@ -1,5 +1,6 @@
 import zlib
 from . import errors
+from typing import Optional
 
 def compress_deflate(data: bytes, level: int = 6) -> bytes:
     """

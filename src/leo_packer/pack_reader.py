@@ -1,8 +1,7 @@
-# src/leo_packer/pack_reader.py
 import os
 import struct
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from .util import crc32_ieee as leo_crc32_ieee
 from .errors import LeoPackError as PackError
