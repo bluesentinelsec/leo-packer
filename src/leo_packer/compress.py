@@ -19,7 +19,7 @@ def compress_deflate(data: bytes, level: int = 6) -> bytes:
     else:
         return data
 
-def decompress_deflate(data: bytes, expected_size: int | None = None) -> bytes:
+def decompress_deflate(data: bytes, expected_size: Optional[int] = None) -> bytes:
     """
     Decompress zlib stream into bytes.
     Raises DecompressionError on failure.

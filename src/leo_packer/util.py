@@ -10,7 +10,7 @@ def fnv1a64(data: bytes) -> int:
         h = (h * prime) & 0xFFFFFFFFFFFFFFFF
     return h
 
-def crc32_ieee(data: bytes, length: int | None = None, seed: int = 0) -> int:
+def crc32_ieee(data: bytes, length: Optional[int] = None, seed: int = 0) -> int:
     """CRC-32 IEEE (same as C implementation)."""
     if length is None:
         length = len(data)

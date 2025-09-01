@@ -58,6 +58,7 @@ if __name__ == "__main__":
 
 import zlib
 from . import errors
+from typing import Optional
 
 def compress_deflate(data: bytes, level: int = 6) -> bytes:
     """
@@ -176,11 +177,10 @@ def xor_stream_apply(seed: int, data: bytearray) -> None:
  * File: src/leo_packer/pack_reader.py
  * ========================================================== */
 
-# src/leo_packer/pack_reader.py
 import os
 import struct
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from .util import crc32_ieee as leo_crc32_ieee
 from .errors import LeoPackError as PackError
@@ -286,6 +286,7 @@ def extract(pack: Pack, name: str) -> bytes:
  * ========================================================== */
 
 import binascii
+from typing import Optional
 
 def fnv1a64(data: bytes) -> int:
     """64-bit FNV-1a hash"""

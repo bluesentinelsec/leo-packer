@@ -29,8 +29,7 @@ _HEADER_SIZE = 0x54
 _MAGIC = b"LEOPACK\0"
 _VERSION = 1
 
-
-def open_pack(path: str, password: str | None = None) -> Pack:
+def open_pack(path: str, password: Optional[str] = None) -> Pack:
     f = open(path, "rb")
 
     header = f.read(_HEADER_SIZE)
