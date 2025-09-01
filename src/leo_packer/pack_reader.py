@@ -2,10 +2,12 @@ import os
 import struct
 from dataclasses import dataclass
 from typing import List, Optional
+from . import compress
 
 from .util import crc32_ieee as leo_crc32_ieee
 from .errors import LeoPackError as PackError
 
+FLAG_COMPRESSED = 0x1
 
 @dataclass
 class Entry:
@@ -85,7 +87,6 @@ def close(pack: Pack):
 def list_entries(pack: Pack) -> List[Entry]:
     return pack.entries
 
-
 def extract(pack: Pack, name: str) -> bytes:
     for e in pack.entries:
         if e.name == name:
@@ -93,6 +94,14 @@ def extract(pack: Pack, name: str) -> bytes:
             data = pack.f.read(e.size_stored)
             if len(data) != e.size_stored:
                 raise PackError("Truncated data")
+
+            # Decompress if needed
+            if e.flags & FLAG_COMPRESSED:
+                try:
+                    data = compress.decompress_deflate(data, expected_size=e.size_uncompressed)
+                except Exception as ex:
+                    raise PackError(f"Decompression failed for {e.name}: {ex}") from ex
+
             crc = leo_crc32_ieee(data, len(data), 0)
             if crc != e.crc32_uncompressed:
                 raise PackError("CRC mismatch")
