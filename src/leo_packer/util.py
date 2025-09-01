@@ -1,4 +1,5 @@
 import binascii
+from typing import Optional
 
 def fnv1a64(data: bytes) -> int:
     """64-bit FNV-1a hash"""
