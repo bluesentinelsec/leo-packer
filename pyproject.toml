@@ -37,3 +37,8 @@ where = ["src"]
 dev = [
     "pytest>=8.0",
 ]
+
+progress = [
+    "tqdm>=4.0.0",
+]
+

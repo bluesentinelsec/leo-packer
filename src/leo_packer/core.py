@@ -1,3 +1,7 @@
+# ==========================================================
+# File: src/leo_packer/core.py
+# ==========================================================
+
 """
 Core library for Leo Pack operations (LGPLv3).
 """
@@ -11,6 +15,11 @@ from .errors import PackError
 from . import pack_reader
 from . import compress
 from . import obfuscate
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
 
 _HEADER_SIZE = 0x54
 _MAGIC = b"LEOPACK\0"
@@ -37,39 +46,34 @@ def pack(
     output_file: str,
     use_compression: bool = False,
     password: Optional[str] = None,
+    show_progress: bool = False,
 ) -> None:
-    """Pack a directory into a LeoPack archive.
-
-    If `password` is provided (non-empty), file data is obfuscated with a
-    non-cryptographic XOR stream keyed from (password, pack_salt).
-    """
+    """Pack a directory into a LeoPack archive."""
     input_dir = Path(input_dir)
     files = [p for p in input_dir.rglob("*") if p.is_file()]
 
     pack_flags = 0
-    # Use a fixed salt for deterministic tests; you can swap to os.urandom(8) later
     pack_salt = 0x12345678ABCDEF00
 
-    # If obfuscation enabled, derive seed now
     password = password or None
     xor_seed = 0
     if password:
         pack_flags |= PACK_FLAG_OBFUSCATED
         xor_seed = obfuscate.xor_seed_from_password(password, pack_salt)
 
-    # Build header placeholder
     header = bytearray(_HEADER_SIZE)
     header[0:8] = _MAGIC
     struct.pack_into("<I", header, 8, _VERSION)
-    struct.pack_into("<I", header, 12, pack_flags)  # pack_flags
-    struct.pack_into("<Q", header, 40, pack_salt)   # salt
+    struct.pack_into("<I", header, 12, pack_flags)
+    struct.pack_into("<Q", header, 40, pack_salt)
 
-    # Data + TOC
     data_chunks = []
     toc_chunks = []
     offset = _HEADER_SIZE
 
-    for f in files:
+    iterator = tqdm(files, desc="Packing", unit="file") if (show_progress and tqdm) else files
+
+    for f in iterator:
         data = f.read_bytes()
         stored = data
         flags = 0
@@ -80,7 +84,7 @@ def pack(
                 stored = comp
                 flags |= FLAG_COMPRESSED
 
-        crc = leo_crc32_ieee(data, len(data), 0)  # CRC over *uncompressed* clear bytes
+        crc = leo_crc32_ieee(data, len(data), 0)
         data_chunks.append(stored)
 
         name_bytes = str(f.relative_to(input_dir)).encode("utf-8")
@@ -91,8 +95,8 @@ def pack(
             flags,
             name_len,
             offset,
-            len(data),      # size_uncompressed
-            len(stored),    # size_stored (post-compression, pre-xor)
+            len(data),
+            len(stored),
             crc,
         )
         toc_chunks.append(struct.pack("<H", name_len) + name_bytes + entry_struct)
@@ -101,19 +105,16 @@ def pack(
 
     toc_bytes = b"".join(toc_chunks)
 
-    # Patch header with TOC info
     toc_offset = _HEADER_SIZE + sum(len(d) for d in data_chunks)
-    struct.pack_into("<Q", header, 16, toc_offset)      # toc_offset
-    struct.pack_into("<Q", header, 24, len(toc_bytes))  # toc_size
-    struct.pack_into("<Q", header, 32, _HEADER_SIZE)    # data_offset
+    struct.pack_into("<Q", header, 16, toc_offset)
+    struct.pack_into("<Q", header, 24, len(toc_bytes))
+    struct.pack_into("<Q", header, 32, _HEADER_SIZE)
 
-    # Compute header CRC
     tmp = bytearray(header)
     struct.pack_into("<I", tmp, 0x50, 0)
     crc_header = leo_crc32_ieee(tmp, len(header), 0)
     struct.pack_into("<I", header, 0x50, crc_header)
 
-    # Write file: header → (optionally XOR'd) data chunks → TOC (left in clear)
     with open(output_file, "wb") as out:
         out.write(header)
         for d in data_chunks:
@@ -129,17 +130,19 @@ def unpack(
     output_dir: str,
     password: Optional[str] = None,
     files: Optional[List[str]] = None,
+    show_progress: bool = False,
 ) -> None:
-    """Unpack a LeoPack archive to a directory.
-
-    If `files` is provided, only those entries are extracted.
-    """
+    """Unpack a LeoPack archive to a directory."""
     os.makedirs(output_dir, exist_ok=True)
     pack = pack_reader.open_pack(input_file, password=password)
     try:
-        for entry in pack_reader.list_entries(pack):
-            if files and entry.name not in files:
-                continue
+        entries = pack_reader.list_entries(pack)
+        if files:
+            entries = [e for e in entries if e.name in files]
+
+        iterator = tqdm(entries, desc="Unpacking", unit="file") if (show_progress and tqdm) else entries
+
+        for entry in iterator:
             data = pack_reader.extract(pack, entry.name)
             out_path = Path(output_dir) / entry.name
             out_path.parent.mkdir(parents=True, exist_ok=True)

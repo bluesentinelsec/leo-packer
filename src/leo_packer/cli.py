@@ -35,6 +35,11 @@ def main(argv=None) -> None:
         "--password",
         help="Optional password for obfuscation (XOR stream, not cryptographic)"
     )
+    p_pack.add_argument(
+        "--progress",
+        action="store_true",
+        help="Show a progress bar"
+    )
 
     # -------------------------
     # unpack command
@@ -53,6 +58,11 @@ def main(argv=None) -> None:
         action="append",
         help="Specific file(s) to extract (can be repeated). "
              "If omitted, all files are unpacked."
+    )
+    p_unpack.add_argument(
+        "--progress",
+        action="store_true",
+        help="Show a progress bar"
     )
 
     # -------------------------
@@ -78,6 +88,7 @@ def main(argv=None) -> None:
             args.output_file,
             use_compression=args.compress,
             password=args.password,
+            show_progress=args.progress,
         )
 
     elif args.command == "unpack":
@@ -86,6 +97,7 @@ def main(argv=None) -> None:
             args.output_dir,
             password=args.password,
             files=args.file,
+            show_progress=args.progress,
         )
 
     elif args.command == "list":

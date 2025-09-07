@@ -1,5 +1,7 @@
 iniconfig==2.1.0
+-e git+ssh://git@github.com/bluesentinelsec/leo-packer.git@59489d0e40c02b4b83ab0a94c78803aaf741a67d#egg=leo_packer
 packaging==25.0
 pluggy==1.6.0
 Pygments==2.19.2
 pytest==8.4.1
+tqdm==4.66.4
