@@ -46,7 +46,6 @@ def pack(
     output_file: str,
     use_compression: bool = False,
     password: Optional[str] = None,
-    show_progress: bool = False,
 ) -> None:
     """Pack a directory into a LeoPack archive."""
     input_dir = Path(input_dir)
@@ -71,9 +70,8 @@ def pack(
     toc_chunks = []
     offset = _HEADER_SIZE
 
-    iterator = tqdm(files, desc="Packing", unit="file") if (show_progress and tqdm) else files
-
-    for f in iterator:
+    for f in files:
+        print(f"[leo-packer] Packing {f.relative_to(input_dir)}")  # 👈 feedback line
         data = f.read_bytes()
         stored = data
         flags = 0
@@ -130,7 +128,6 @@ def unpack(
     output_dir: str,
     password: Optional[str] = None,
     files: Optional[List[str]] = None,
-    show_progress: bool = False,
 ) -> None:
     """Unpack a LeoPack archive to a directory."""
     os.makedirs(output_dir, exist_ok=True)
@@ -140,9 +137,8 @@ def unpack(
         if files:
             entries = [e for e in entries if e.name in files]
 
-        iterator = tqdm(entries, desc="Unpacking", unit="file") if (show_progress and tqdm) else entries
-
-        for entry in iterator:
+        for entry in entries:
+            print(f"[leo-packer] Unpacking {entry.name}")  # 👈 feedback line
             data = pack_reader.extract(pack, entry.name)
             out_path = Path(output_dir) / entry.name
             out_path.parent.mkdir(parents=True, exist_ok=True)
