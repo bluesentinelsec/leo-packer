@@ -1,11 +1,13 @@
-# ==========================================================
-# File: src/leo_packer/obfuscate.py
-# ==========================================================
-
+# src/leo_packer/obfuscate.py
 from . import util
 
+try:
+    from . import _xor
+    _has_c_ext = True
+except ImportError:
+    _has_c_ext = False
+
 def xor_seed_from_password(password: str, pack_salt: int) -> int:
-    """Derive a 32-bit seed from password and salt (non-crypto)."""
     if password is None:
         password = ""
     parts = pack_salt.to_bytes(8, "little") + password.encode("utf-8")
@@ -16,16 +18,17 @@ def xor_seed_from_password(password: str, pack_salt: int) -> int:
     return seed
 
 def xor_stream_apply(seed: int, data: bytearray) -> None:
-    """Apply XOR stream cipher (in-place, optimized)."""
+    """Apply XOR stream cipher (C extension if available, else Python fallback)."""
     if seed == 0 or not data:
         return
+    if _has_c_ext:
+        _xor.xor_stream_apply(seed, data)
+        return
 
-    # Work on a memoryview for fast buffer operations
+    # Python fallback
     view = memoryview(data)
     x = seed & 0xFFFFFFFF
     n = len(view)
-
-    # Process in 4-byte words where possible
     i = 0
     while i + 4 <= n:
         x = (x * 1664525 + 1013904223) & 0xFFFFFFFF
@@ -34,8 +37,6 @@ def xor_stream_apply(seed: int, data: bytearray) -> None:
         view[i + 2] ^= (x >> 8)  & 0xFF
         view[i + 3] ^= x & 0xFF
         i += 4
-
-    # Handle any trailing bytes
     while i < n:
         x = (x * 1664525 + 1013904223) & 0xFFFFFFFF
         view[i] ^= (x >> 24) & 0xFF

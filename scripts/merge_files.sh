@@ -16,7 +16,9 @@ src/leo_packer/__init__.py
 src/leo_packer/obfuscate.py
 src/leo_packer/pack_reader.py
 src/leo_packer/util.py
+src/leo_packer/_xor.c
 pyproject.toml
+setup.py
 requirements.txt
 Makefile
 )
