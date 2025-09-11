@@ -28,25 +28,27 @@ Unlike `.zip` or `.tar`, `.leopack` has:
 
 ## 2. Installation
 
-Right now, `leo-packer` is **local-only**. PyPI publishing will come later.
-
-Clone the repo and install in a virtualenv:
+Install from PyPI:
 
 ```bash
-# clone the repo
-git clone https://github.com/bluesentinelsec/leo-packer.git
-cd leo-packer
-
-# setup virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# execute leo-packer
-leo_packer --help
+pip install leo-packer==1.0.0
 ```
 
-This sets up a venv, installs dependencies, and links `leo-packer` as an editable package.
+Or install the latest version:
+
+```bash
+pip install leo-packer
+```
+
+For development, clone the repo and install in editable mode:
+
+```bash
+git clone https://github.com/bluesentinelsec/leo-packer.git
+cd leo-packer
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+```
 
 ---
 
