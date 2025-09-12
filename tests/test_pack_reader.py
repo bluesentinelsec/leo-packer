@@ -24,7 +24,7 @@ def make_minimal_pack(tmp_path, filename="test.leopack"):
     reserved = b"\x00" * (8 * 4)
 
     # Header placeholder (we'll fix CRC and offsets later)
-    header = bytearray(0x54)  # sizeof(leo_pack_header_v1)
+    header = bytearray(0x58)  # 88 bytes to match C struct with padding
     header[0:8] = magic
     struct.pack_into("<I", header, 8, version)
     struct.pack_into("<I", header, 12, pack_flags)
@@ -39,17 +39,18 @@ def make_minimal_pack(tmp_path, filename="test.leopack"):
     data_offset = len(header)
     crc = leo_crc32_ieee(data_bytes, len(data_bytes), 0)
 
-    # TOC entry
+    # TOC entry (with proper C struct alignment)
     name = b"hello.txt"
     name_len = len(name)
     entry_struct = struct.pack(
-    "<HHQQQI",
-    0,                 # flags
-    name_len,          # name_len
-    data_offset,       # offset
-    len(data_bytes),   # size_uncompressed
-    len(data_bytes),   # size_stored
-    crc                # crc32_uncompressed
+        "<HHIQQQI4x",  # Added I for padding and 4x for trailing padding to match C struct (40 bytes)
+        0,                 # flags
+        name_len,          # name_len
+        0,                 # 4-byte padding to align offset to 8-byte boundary
+        data_offset,       # offset
+        len(data_bytes),   # size_uncompressed
+        len(data_bytes),   # size_stored
+        crc                # crc32_uncompressed
     )
 
     toc_bytes = struct.pack("<H", name_len) + name + entry_struct
@@ -62,11 +63,11 @@ def make_minimal_pack(tmp_path, filename="test.leopack"):
     struct.pack_into("<Q", header, 24, toc_size)
     struct.pack_into("<Q", header, 32, data_offset)
 
-    # Compute header CRC
+    # Compute header CRC (C struct has CRC at offset 80, not 0x50)
     tmp = bytearray(header)
-    struct.pack_into("<I", tmp, 0x50, 0)  # zero crc field
+    struct.pack_into("<I", tmp, 80, 0)  # Zero CRC field at C struct offset
     crc_header = leo_crc32_ieee(tmp, len(header), 0)
-    struct.pack_into("<I", header, 0x50, crc_header)
+    struct.pack_into("<I", header, 80, crc_header)  # Set CRC at C struct offset
 
     # Write file
     with open(path, "wb") as f:

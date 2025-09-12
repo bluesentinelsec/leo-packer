@@ -20,21 +20,9 @@ xor_stream_apply(PyObject *self, PyObject *args)
     unsigned char *buf = (unsigned char *)PyByteArray_AsString(obj);
 
     unsigned int x = seed;
-    Py_ssize_t i = 0;
-
-    while (i + 4 <= n) {
+    for (Py_ssize_t i = 0; i < n; i++) {
         x = (x * 1664525u + 1013904223u);
-        buf[i]     ^= (x >> 24) & 0xFF;
-        buf[i + 1] ^= (x >> 16) & 0xFF;
-        buf[i + 2] ^= (x >> 8)  & 0xFF;
-        buf[i + 3] ^= x & 0xFF;
-        i += 4;
-    }
-
-    while (i < n) {
-        x = (x * 1664525u + 1013904223u);
-        buf[i] ^= (x >> 24) & 0xFF;
-        i++;
+        buf[i] ^= (x >> 24) & 0xFF;  // Use only high byte, one LCG step per byte
     }
 
     Py_RETURN_NONE;

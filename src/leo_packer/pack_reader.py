@@ -10,6 +10,7 @@ from .errors import LeoPackError as PackError
 
 # Entry-level flags
 FLAG_COMPRESSED = 0x1
+FLAG_OBFUSCATED = 0x2
 
 # Pack-level flags (header.pack_flags)
 PACK_FLAG_OBFUSCATED = 0x1
@@ -33,7 +34,7 @@ class Pack:
     password: Optional[str] = None  # stored to derive XOR stream
 
 
-_HEADER_SIZE = 0x54
+_HEADER_SIZE = 0x58  # 88 bytes to match C struct with padding
 _MAGIC = b"LEOPACK\0"
 _VERSION = 1
 
@@ -55,10 +56,10 @@ def open_pack(path: str, password: Optional[str] = None) -> Pack:
     if version != _VERSION:
         raise PackError("Unsupported version")
 
-    # Validate header CRC
-    (crc_expect,) = struct.unpack_from("<I", header, 0x50)
+    # Validate header CRC (C struct has CRC at offset 80)
+    (crc_expect,) = struct.unpack_from("<I", header, 80)
     tmp = bytearray(header)
-    struct.pack_into("<I", tmp, 0x50, 0)
+    struct.pack_into("<I", tmp, 80, 0)
     crc_actual = leo_crc32_ieee(tmp, len(header), 0)
     if crc_expect != crc_actual:
         raise PackError("Bad header CRC")
@@ -76,10 +77,10 @@ def open_pack(path: str, password: Optional[str] = None) -> Pack:
         p += 2
         name = toc[p:p + nlen].decode("utf-8")
         p += nlen
-        flags, name_len, offset, size_uncompressed, size_stored, crc32_uncompressed = struct.unpack_from(
-            "<HHQQQI", toc, p
+        flags, name_len, padding, offset, size_uncompressed, size_stored, crc32_uncompressed = struct.unpack_from(
+            "<HHIQQQI4x", toc, p  # Added 4x for trailing padding
         )
-        p += struct.calcsize("<HHQQQI")
+        p += struct.calcsize("<HHIQQQI4x")
 
         entries.append(Entry(name, flags, size_uncompressed, size_stored, offset, crc32_uncompressed))
 
@@ -110,8 +111,9 @@ def extract(pack: Pack, name: str) -> bytes:
             if len(data) != e.size_stored:
                 raise PackError("Truncated data")
 
-            # Deobfuscate at pack-level before any per-entry transforms
-            if pack.pack_flags & PACK_FLAG_OBFUSCATED:
+            # Deobfuscate if this entry is obfuscated (per-entry flag takes precedence)
+            needs_deobfuscation = (e.flags & FLAG_OBFUSCATED) or (pack.pack_flags & PACK_FLAG_OBFUSCATED)
+            if needs_deobfuscation:
                 if not pack.password:
                     raise PackError("Archive is obfuscated and requires a password")
                 seed = obfuscate.xor_seed_from_password(pack.password, pack.pack_salt)

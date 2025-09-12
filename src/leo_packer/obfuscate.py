@@ -1,4 +1,5 @@
 # src/leo_packer/obfuscate.py
+import struct
 from . import util
 
 try:
@@ -10,7 +11,9 @@ except ImportError:
 def xor_seed_from_password(password: str, pack_salt: int) -> int:
     if password is None:
         password = ""
-    parts = pack_salt.to_bytes(8, "little") + password.encode("utf-8")
+    # Match C implementation: hash password first, then combine with salt
+    password_hash = util.fnv1a64(password.encode("utf-8"))
+    parts = struct.pack("<QQ", pack_salt, password_hash)
     mix = util.fnv1a64(parts)
     seed = (mix ^ (mix >> 32)) & 0xFFFFFFFF
     if seed == 0:
@@ -25,20 +28,9 @@ def xor_stream_apply(seed: int, data: bytearray) -> None:
         _xor.xor_stream_apply(seed, data)
         return
 
-    # Python fallback
-    view = memoryview(data)
+    # Python fallback - match C implementation: one LCG step per byte, use high byte only
     x = seed & 0xFFFFFFFF
-    n = len(view)
-    i = 0
-    while i + 4 <= n:
+    for i in range(len(data)):
         x = (x * 1664525 + 1013904223) & 0xFFFFFFFF
-        view[i]     ^= (x >> 24) & 0xFF
-        view[i + 1] ^= (x >> 16) & 0xFF
-        view[i + 2] ^= (x >> 8)  & 0xFF
-        view[i + 3] ^= x & 0xFF
-        i += 4
-    while i < n:
-        x = (x * 1664525 + 1013904223) & 0xFFFFFFFF
-        view[i] ^= (x >> 24) & 0xFF
-        i += 1
+        data[i] ^= (x >> 24) & 0xFF
 

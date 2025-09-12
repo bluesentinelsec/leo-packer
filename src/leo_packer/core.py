@@ -21,12 +21,13 @@ try:
 except ImportError:
     tqdm = None
 
-_HEADER_SIZE = 0x54
+_HEADER_SIZE = 0x58  # 88 bytes to match C struct with padding
 _MAGIC = b"LEOPACK\0"
 _VERSION = 1
 
 # Entry-level flags (per-file)
 FLAG_COMPRESSED = 0x1
+FLAG_OBFUSCATED = 0x2
 
 # Pack-level flags (header.pack_flags)
 PACK_FLAG_OBFUSCATED = 0x1
@@ -65,6 +66,7 @@ def pack(
     struct.pack_into("<I", header, 8, _VERSION)
     struct.pack_into("<I", header, 12, pack_flags)
     struct.pack_into("<Q", header, 40, pack_salt)
+    # Reserved fields (32 bytes from offset 48-79) are already zero-initialized
 
     data_chunks = []
     toc_chunks = []
@@ -82,6 +84,10 @@ def pack(
                 stored = comp
                 flags |= FLAG_COMPRESSED
 
+        # Set obfuscation flag if password is provided (matches C behavior)
+        if password:
+            flags |= FLAG_OBFUSCATED
+
         crc = leo_crc32_ieee(data, len(data), 0)
         data_chunks.append(stored)
 
@@ -89,9 +95,10 @@ def pack(
         name_len = len(name_bytes)
 
         entry_struct = struct.pack(
-            "<HHQQQI",
+            "<HHIQQQI4x",  # Added 4x for 4 bytes trailing padding to match C struct size (40 bytes)
             flags,
             name_len,
+            0,  # 4-byte padding to align offset to 8-byte boundary
             offset,
             len(data),
             len(stored),
@@ -108,10 +115,11 @@ def pack(
     struct.pack_into("<Q", header, 24, len(toc_bytes))
     struct.pack_into("<Q", header, 32, _HEADER_SIZE)
 
+    # Compute header CRC (C struct has CRC at offset 80, not 0x50)
     tmp = bytearray(header)
-    struct.pack_into("<I", tmp, 0x50, 0)
+    struct.pack_into("<I", tmp, 80, 0)  # Zero CRC field at C struct offset
     crc_header = leo_crc32_ieee(tmp, len(header), 0)
-    struct.pack_into("<I", header, 0x50, crc_header)
+    struct.pack_into("<I", header, 80, crc_header)  # Set CRC at C struct offset
 
     with open(output_file, "wb") as out:
         out.write(header)
