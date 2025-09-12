@@ -31,12 +31,6 @@ Unlike `.zip` or `.tar`, `.leopack` has:
 Install from PyPI:
 
 ```bash
-pip install leo-packer==1.0.0
-```
-
-Or install the latest version:
-
-```bash
 pip install leo-packer
 ```
 
