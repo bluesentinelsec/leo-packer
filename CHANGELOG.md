@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-09-11
+
+Fix C compatibility: align structs and obfuscation with leo-engine
+
+- Update header size from 84 to 88 bytes to match C struct padding
+- Fix TOC entry struct to 40 bytes with proper alignment padding
+- Correct header CRC offset from 0x50 to 80 (C struct layout)
+- Add per-entry FLAG_OBFUSCATED to match C behavior
+- Fix password hashing to hash password first, then combine with salt
+- Simplify XOR cipher to 1 LCG step per byte (not 4 bytes per step)
+- Update both C extension and Python fallback implementations
+
+Python archives are now fully compatible with C leo-engine.
+
 ## [1.0.0] - 2025-09-11
 
 ### Added
