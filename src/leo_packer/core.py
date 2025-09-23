@@ -91,7 +91,7 @@ def pack(
         crc = leo_crc32_ieee(data, len(data), 0)
         data_chunks.append(stored)
 
-        name_bytes = str(f.relative_to(input_dir)).encode("utf-8")
+        name_bytes = f.relative_to(input_dir).as_posix().encode("utf-8")
         name_len = len(name_bytes)
 
         entry_struct = struct.pack(
@@ -148,7 +148,7 @@ def unpack(
         for entry in entries:
             print(f"[leo-packer] Unpacking {entry.name}")  # 👈 feedback line
             data = pack_reader.extract(pack, entry.name)
-            out_path = Path(output_dir) / entry.name
+            out_path = Path(output_dir).joinpath(*entry.name.split("/"))
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_bytes(data)
     finally:
