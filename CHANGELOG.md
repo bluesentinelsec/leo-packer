@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-09-22
+
+Fixes issue where archives created on Windows with backslashes couldn't be properly unpacked on POSIX systems and vice versa.
+
+Normalize all file paths to forward slashes in archives for cross-platform compatibility
+
+Add --version CLI flag that reads version from package metadata
+
+Bump version to 1.0.2
+
 ## [1.0.1] - 2025-09-11
 
 Fix C compatibility: align structs and obfuscation with leo-engine
