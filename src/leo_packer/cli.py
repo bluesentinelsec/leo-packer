@@ -9,6 +9,7 @@ CLI for leo-packer (GPLv3).
 import argparse
 import sys
 from .core import pack, unpack
+from . import __version__
 
 
 def main(argv=None) -> None:
@@ -16,7 +17,8 @@ def main(argv=None) -> None:
         prog="leo-packer",
         description="Pack and unpack Leo Pack archives"
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument("--version", action="version", version=f"leo-packer {__version__}")
+    subparsers = parser.add_subparsers(dest="command")
 
     # -------------------------
     # pack command
@@ -71,6 +73,9 @@ def main(argv=None) -> None:
     # Parse and dispatch
     # -------------------------
     args = parser.parse_args(argv)
+
+    if not args.command:
+        parser.error("the following arguments are required: command")
 
     if args.command == "pack":
         pack(
